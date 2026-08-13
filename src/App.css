@@ -1,0 +1,103 @@
+.app {
+  min-height: 100vh;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: #666;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.summary > div {
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  color: #777;
+  font-size: 13px;
+}
+
+.summary strong {
+  font-size: 24px;
+}
+
+.providers {
+  max-width: 1000px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header span {
+  color: #777;
+  font-size: 13px;
+}
+
+.empty-state {
+  padding: 48px;
+  border: 1px dashed #ccc;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.empty-state h3 {
+  margin-top: 0;
+}
+
+.empty-state p {
+  max-width: 500px;
+  margin: 0 auto 24px;
+  color: #666;
+  line-height: 1.5;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.primary-button {
+  background: #111;
+  color: white;
+}
+
+.refresh-button {
+  background: #f1f1f1;
+  color: #222;
+}

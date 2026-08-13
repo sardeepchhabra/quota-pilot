@@ -15,13 +15,14 @@ describe('MockProvider', () => {
     const provider = new MockProvider();
     const [account] = await provider.getAccounts();
 
-    const usage = await provider.getUsage(account);
+    // const usage = await provider.getUsage(account);
+    const snapshot = await provider.getSnapshot(account);
 
-    expect(usage.providerId).toBe('mock');
-    expect(usage.quotas).toHaveLength(1);
+    expect(snapshot.account.providerId).toBe('mock');
+    expect(snapshot.quotas).toHaveLength(1);
 
-    expect(usage.quotas[0].remaining).toBe(73);
-    expect(usage.quotas[0].percentageRemaining).toBe(73);
-    expect(usage.quotas[0].confidence).toBe('provider-reported');
+    expect(snapshot.quotas[0].remaining).toBe(73);
+    expect(snapshot.quotas[0].percentageRemaining).toBe(73);
+    expect(snapshot.quotas[0].confidence).toBe('provider-reported');
   });
 });

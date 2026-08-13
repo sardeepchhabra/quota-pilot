@@ -1,4 +1,4 @@
-import type { ProviderUsage } from '../domain/quota';
+import type { ProviderSnapshot } from "../domain/quota";
 
 export interface ProviderAccount {
   id: string;
@@ -13,7 +13,7 @@ export interface Provider {
 
   getAccounts(): Promise<ProviderAccount[]>;
 
-  getUsage(account: ProviderAccount): Promise<ProviderUsage>;
+  getSnapshot(account: ProviderAccount): Promise<ProviderSnapshot>;
 
   disconnect(account: ProviderAccount): Promise<void>;
 }

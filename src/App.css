@@ -200,3 +200,85 @@ button {
 .capability.not-supported {
   background: #f0f0f0;
 }
+
+.subscriptions {
+  margin-top: 48px;
+}
+
+.subscription-card {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+}
+
+.subscription-card h3,
+.subscription-card p {
+  margin: 0;
+}
+
+.subscription-card span,
+.subscription-card small {
+  display: block;
+  color: #777;
+  margin-top: 4px;
+}
+
+.add-provider {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px dashed #ccc;
+  border-radius: 12px;
+}
+
+.add-provider p {
+  color: #666;
+  max-width: 650px;
+}
+
+.subscription-form {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: min(500px, calc(100vw - 40px));
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 15%);
+}
+
+.subscription-form label {
+  display: block;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.subscription-form input,
+.subscription-form select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}

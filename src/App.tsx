@@ -4,9 +4,12 @@ import type { ProviderSnapshot } from "./domain/quota";
 import { ProviderService } from "./services/provider-service";
 import { createProviderRegistry } from "./providers";
 import "./App.css";
-
+import { ManualSubscriptionForm } from "./components/ManualSubscriptionForm";
+import { SubscriptionService } from "./services/subscription-service";
+import { PROVIDER_CATALOG } from "./providers/provider-catalog";
+import type { Subscription } from "./domain/subscription";
 const providerService = new ProviderService(createProviderRegistry());
-
+const subscriptionService = new SubscriptionService();
 function capabilityLabel(snapshot: ProviderSnapshot, id: string) {
   return snapshot.account.capabilities.find(
     (capability) => capability.id === id
@@ -16,7 +19,18 @@ function capabilityLabel(snapshot: ProviderSnapshot, id: string) {
 function App() {
   const [snapshots, setSnapshots] = useState<ProviderSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() =>
+    subscriptionService.getAll()
+  );
 
+  const [showChatGPTSetup, setShowChatGPTSetup] = useState(false);
+
+  const saveSubscription = (subscription: Subscription) => {
+    subscriptionService.save(subscription);
+
+    setSubscriptions(subscriptionService.getAll());
+    setShowChatGPTSetup(false);
+  };
   const loadProviders = async () => {
     setLoading(true);
 
@@ -146,6 +160,63 @@ function App() {
           })}
         </div>
       </section>
+      <section className="subscriptions">
+        <div className="section-header">
+          <h2>Subscriptions</h2>
+          <span>{subscriptions.length} tracked</span>
+        </div>
+
+        {subscriptions.map((subscription) => (
+          <article className="subscription-card" key={subscription.id}>
+            <div>
+              <h3>{subscription.providerId}</h3>
+              <p>{subscription.planName}</p>
+            </div>
+
+            <div>
+              {subscription.price !== undefined && (
+                <strong>
+                  {subscription.currency} {subscription.price}
+                </strong>
+              )}
+
+              <span>{subscription.billingCycle}</span>
+            </div>
+
+            {subscription.renewsAt && (
+              <p>
+                Renews: {new Date(subscription.renewsAt).toLocaleDateString()}
+              </p>
+            )}
+
+            <small>Source: {subscription.source}</small>
+          </article>
+        ))}
+
+        <div className="add-provider">
+          <h3>Add a provider subscription</h3>
+
+          <p>
+            Some providers do not expose subscription or quota information
+            through an API. You can still track their subscription locally.
+          </p>
+
+          <button
+            className="primary-button"
+            onClick={() => setShowChatGPTSetup(true)}
+          >
+            Add ChatGPT
+          </button>
+        </div>
+      </section>
+
+      {showChatGPTSetup && (
+        <ManualSubscriptionForm
+          providerId="chatgpt"
+          onSave={saveSubscription}
+          onCancel={() => setShowChatGPTSetup(false)}
+        />
+      )}
     </main>
   );
 }

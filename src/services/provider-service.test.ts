@@ -3,29 +3,24 @@ import { ProviderService } from "./provider-service";
 import { createProviderRegistry } from "../providers";
 
 describe("ProviderService", () => {
-  it("returns accounts from registered providers", async () => {
+  it("returns accounts only from connected providers", async () => {
     const service = new ProviderService(createProviderRegistry());
 
     const accounts = await service.getAccounts();
 
-    expect(accounts).toHaveLength(2);
-    expect(accounts.map((account) => account.providerId)).toContain("mock");
-    expect(accounts.map((account) => account.providerId)).toContain("chatgpt");
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0].providerId).toBe("mock");
   });
 
-  it("retrieves usage through the correct provider", async () => {
+  it("does not expose an unconnected ChatGPT account", async () => {
     const service = new ProviderService(createProviderRegistry());
 
     const accounts = await service.getAccounts();
+
     const chatgpt = accounts.find(
       (account) => account.providerId === "chatgpt"
     );
 
-    expect(chatgpt).toBeDefined();
-
-    const snapshot = await service.getSnapshot(chatgpt!);
-    expect(snapshot.account.providerId).toBe("chatgpt");
-    expect(snapshot.quotas).toHaveLength(0);
-    expect(snapshot.subscription?.status).toBe("unknown");
+    expect(chatgpt).toBeUndefined();
   });
 });

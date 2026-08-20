@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-08-20T17:47:53.112Z",
+  "platform": "win32",
+  "architecture": "x64",
+  "providers": [
+    {
+      "provider": "codex",
+      "installed": true,
+      "authenticated": true,
+      "source": "codex-app-server",
+      "capabilities": [
+        "account",
+        "plan",
+        "rate-limit",
+        "reset-time"
+      ]
+    },
+    {
+      "provider": "claude-code",
+      "installed": true,
+      "authenticated": true,
+      "source": "claude-code-local",
+      "capabilities": [
+        "rate-limit",
+        "reset-time"
+      ]
+    },
+    {
+      "provider": "gemini",
+      "installed": false,
+      "authenticated": false,
+      "source": null,
+      "capabilities": []
+    },
+    {
+      "provider": "github",
+      "installed": false,
+      "authenticated": false,
+      "source": null,
+      "capabilities": []
+    }
+  ]
+}

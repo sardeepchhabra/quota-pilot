@@ -4,15 +4,17 @@ import type { ProviderSnapshot } from "./domain/quota";
 import { ProviderService } from "./services/provider-service";
 import { createProviderRegistry } from "./providers";
 import "./App.css";
-import { ManualSubscriptionForm } from "./components/ManualSubscriptionForm";
+// import { ManualSubscriptionForm } from "./components/ManualSubscriptionForm";
 import { SubscriptionService } from "./services/subscription-service";
-import { PROVIDER_CATALOG } from "./providers/provider-catalog";
+// import { PROVIDER_CATALOG } from "./providers/provider-catalog";
 import type { Subscription } from "./domain/subscription";
+import { getCodexSnapshot, type CodexSnapshot } from "./services/codex-service";
+
 const providerService = new ProviderService(createProviderRegistry());
 const subscriptionService = new SubscriptionService();
 function capabilityLabel(snapshot: ProviderSnapshot, id: string) {
   return snapshot.account.capabilities.find(
-    (capability) => capability.id === id
+    (capability) => capability.id === id,
   );
 }
 
@@ -20,17 +22,26 @@ function App() {
   const [snapshots, setSnapshots] = useState<ProviderSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() =>
-    subscriptionService.getAll()
+    subscriptionService.getAll(),
   );
 
-  const [showChatGPTSetup, setShowChatGPTSetup] = useState(false);
+  // const [showChatGPTSetup, setShowChatGPTSetup] = useState(false);
+  const [codex, setCodex] = useState<CodexSnapshot | null>(null);
+  const [codexError, setCodexError] = useState<string | null>(null);
 
-  const saveSubscription = (subscription: Subscription) => {
-    subscriptionService.save(subscription);
+  useEffect(() => {
+    getCodexSnapshot()
+      .then(setCodex)
+      .catch((error) => {
+        setCodexError(error instanceof Error ? error.message : String(error));
+      });
+  }, []);
+  // const saveSubscription = (subscription: Subscription) => {
+  //   subscriptionService.save(subscription);
 
-    setSubscriptions(subscriptionService.getAll());
-    setShowChatGPTSetup(false);
-  };
+  //   setSubscriptions(subscriptionService.getAll());
+  //   setShowChatGPTSetup(false);
+  // };
   const loadProviders = async () => {
     setLoading(true);
 
@@ -38,7 +49,7 @@ function App() {
       const accounts: ProviderAccount[] = await providerService.getAccounts();
 
       const results = await Promise.all(
-        accounts.map((account) => providerService.getSnapshot(account))
+        accounts.map((account) => providerService.getSnapshot(account)),
       );
 
       setSnapshots(results);
@@ -47,9 +58,9 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    void loadProviders();
-  }, []);
+  // useEffect(() => {
+  //   void loadProviders();
+  // }, []);
 
   return (
     <main className="app">
@@ -210,13 +221,59 @@ function App() {
         </div>
       </section>
 
-      {showChatGPTSetup && (
+      {codex && (
+        <article className="provider-card">
+          <div className="provider-card-header">
+            <div>
+              <h3>Codex</h3>
+              <p>{codex.email ?? "Authenticated Codex account"}</p>
+            </div>
+
+            <span className="status-dot">●</span>
+          </div>
+
+          <div className="plan">
+            <span className="label">Plan</span>
+            <strong>{codex.plan_type ?? "Unknown"}</strong>
+          </div>
+
+          <div className="quota">
+            <strong>
+              {codex.remaining_percent != null
+                ? `${Math.round(codex.remaining_percent)}%`
+                : "—"}
+            </strong>
+            <span>remaining</span>
+          </div>
+
+          {codex.resets_at && (
+            <p className="reset">
+              Reset: {new Date(codex.resets_at * 1000).toLocaleString()}
+            </p>
+          )}
+
+          <div className="provider-meta">
+            <span>Source: Codex app-server</span>
+          </div>
+        </article>
+      )}
+
+      {codexError && (
+        <article className="provider-card">
+          <h3>Codex</h3>
+          <p>{codexError}</p>
+          <span className="provider-meta">
+            Connect/authenticate Codex and try again.
+          </span>
+        </article>
+      )}
+      {/* {showChatGPTSetup && (
         <ManualSubscriptionForm
           providerId="chatgpt"
           onSave={saveSubscription}
           onCancel={() => setShowChatGPTSetup(false)}
         />
-      )}
+      )} */}
     </main>
   );
 }

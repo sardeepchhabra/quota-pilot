@@ -1,13 +1,11 @@
 const https = require("https");
-const readline = require("readline");
 
-// const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+// POC ONLY:
+// Use an environment variable in the final version.
 const CLIENT_ID = "Iv23liMwu8rxQB41bMhZ";
 
 if (!CLIENT_ID) {
-  console.error("Missing GITHUB_CLIENT_ID.");
-  console.error("Set it first with:");
-  console.error("set GITHUB_CLIENT_ID=YOUR_CLIENT_ID");
+  console.error("Missing GitHub Client ID.");
   process.exit(1);
 }
 
@@ -138,10 +136,14 @@ async function getAccessToken(deviceCode, interval) {
   }
 }
 
-async function getCurrentUser(token) {
-  const response = await request("GET", "api.github.com", "/user", null, {
+async function githubGet(path, token) {
+  return request("GET", "api.github.com", path, null, {
     Authorization: `Bearer ${token}`,
   });
+}
+
+async function getCurrentUser(token) {
+  const response = await githubGet("/user", token);
 
   if (response.status !== 200) {
     throw new Error(
@@ -162,13 +164,46 @@ async function getAiCreditUsage(token, username) {
     `/users/${encodeURIComponent(username)}/settings/billing/ai_credit/usage` +
     `?year=${year}&month=${month}`;
 
-  return request("GET", "api.github.com", path, null, {
-    Authorization: `Bearer ${token}`,
-  });
+  return githubGet(path, token);
+}
+
+async function getBillingSummary(token, username) {
+  const now = new Date();
+
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+
+  const path =
+    `/users/${encodeURIComponent(username)}/settings/billing/usage/summary` +
+    `?year=${year}&month=${month}`;
+
+  return githubGet(path, token);
+}
+
+async function getOrganizations(token) {
+  return githubGet("/user/orgs", token);
+}
+
+async function getOrganizationCopilotSeat(token, org, username) {
+  const path = `/orgs/${encodeURIComponent(org)}/members/${encodeURIComponent(
+    username
+  )}/copilot`;
+
+  return githubGet(path, token);
+}
+
+async function getOrganizationCopilotBilling(token, org) {
+  const path = `/orgs/${encodeURIComponent(org)}/copilot/billing`;
+
+  return githubGet(path, token);
 }
 
 async function main() {
-  console.log("=== QuotaPilot GitHub Copilot POC ===");
+  console.log("=== QuotaPilot GitHub Copilot POC 2A ===");
+
+  // ------------------------------------------------------------
+  // 1. Authenticate
+  // ------------------------------------------------------------
 
   const { device_code, interval } = await authorizeDevice();
 
@@ -178,42 +213,116 @@ async function main() {
 
   console.log("\nGitHub authentication: SUCCESS");
 
+  // ------------------------------------------------------------
+  // 2. Identify GitHub account
+  // ------------------------------------------------------------
+
   const user = await getCurrentUser(token);
 
-  console.log("\nGitHub account:");
-  console.log({
-    login: user.login,
-    name: user.name,
-    email: user.email,
-  });
+  console.log("\n=== GITHUB ACCOUNT ===");
+  console.dir(
+    {
+      login: user.login,
+      name: user.name,
+      email: user.email,
+    },
+    { depth: null }
+  );
+
+  // ------------------------------------------------------------
+  // 3. Personal AI-credit usage
+  // ------------------------------------------------------------
 
   const usage = await getAiCreditUsage(token, user.login);
-  const summaryPath =
-    `/users/${encodeURIComponent(user.login)}` +
-    `/settings/billing/usage/summary` +
-    `?year=${new Date().getUTCFullYear()}` +
-    `&month=${new Date().getUTCMonth() + 1}`;
 
-  const summary = await request("GET", "api.github.com", summaryPath, null, {
-    Authorization: `Bearer ${token}`,
-  });
-
-  console.log("\n=== BILLING USAGE SUMMARY ===");
-  console.log("Status:", summary.status);
-  console.dir(summary.data, { depth: null });
-
-  console.log("\nAI credit API status:");
-  console.log(usage.status);
-
-  console.log("\n=== AI CREDIT USAGE ===");
+  console.log("\n=== PERSONAL AI CREDIT USAGE ===");
+  console.log("HTTP:", usage.status);
   console.dir(usage.data, { depth: null });
 
-  if (usage.status === 200) {
-    console.log("\nPOC RESULT: GitHub AI-credit usage is accessible.");
-  } else {
+  // ------------------------------------------------------------
+  // 4. Personal billing summary
+  // ------------------------------------------------------------
+
+  const summary = await getBillingSummary(token, user.login);
+
+  console.log("\n=== PERSONAL BILLING SUMMARY ===");
+  console.log("HTTP:", summary.status);
+  console.dir(summary.data, { depth: null });
+
+  // ------------------------------------------------------------
+  // 5. Organizations
+  // ------------------------------------------------------------
+
+  const orgs = await getOrganizations(token);
+
+  console.log("\n=== ORGANIZATIONS ===");
+  console.log("HTTP:", orgs.status);
+  console.dir(orgs.data, { depth: null });
+
+  if (orgs.status === 200 && Array.isArray(orgs.data) && orgs.data.length > 0) {
     console.log(
-      "\nPOC RESULT: Authentication worked, but AI-credit usage was not accessible."
+      `\nChecking Copilot access across ${orgs.data.length} organization(s)...`
     );
+
+    for (const org of orgs.data) {
+      console.log(`\n----------------------------------------`);
+      console.log(`Organization: ${org.login}`);
+      console.log(`----------------------------------------`);
+
+      // --------------------------------------------------------
+      // 6. Organization Copilot seat for current user
+      // --------------------------------------------------------
+
+      const seat = await getOrganizationCopilotSeat(
+        token,
+        org.login,
+        user.login
+      );
+
+      console.log("\nCopilot seat endpoint:");
+      console.log("HTTP:", seat.status);
+
+      if (seat.status === 200) {
+        console.dir(seat.data, {
+          depth: null,
+        });
+      } else {
+        console.log(JSON.stringify(seat.data, null, 2));
+      }
+
+      // --------------------------------------------------------
+      // 7. Organization Copilot billing
+      // --------------------------------------------------------
+
+      const billing = await getOrganizationCopilotBilling(token, org.login);
+
+      console.log("\nOrganization Copilot billing:");
+      console.log("HTTP:", billing.status);
+
+      if (billing.status === 200) {
+        console.dir(billing.data, {
+          depth: null,
+        });
+      } else {
+        console.log(JSON.stringify(billing.data, null, 2));
+      }
+    }
+  } else {
+    console.log("\nNo GitHub organizations returned for this account.");
+  }
+
+  console.log("\n=== POC RESULT ===");
+
+  if (usage.status === 200 && Array.isArray(usage.data?.usageItems)) {
+    console.log("Personal AI-credit endpoint: ACCESSIBLE");
+
+    if (usage.data.usageItems.length === 0) {
+      console.log("Personal AI-credit usage: EMPTY");
+    } else {
+      console.log("Personal AI-credit usage: DATA AVAILABLE");
+    }
+  } else {
+    console.log("Personal AI-credit endpoint: NOT ACCESSIBLE");
   }
 
   console.log("\nToken was intentionally not printed.");

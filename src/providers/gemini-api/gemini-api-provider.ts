@@ -6,7 +6,11 @@ export class GeminiApiProvider implements Provider {
   readonly id = "gemini-api";
   readonly name = "Gemini API";
 
-  constructor(private readonly client: GeminiApiClient) {}
+  private readonly client: GeminiApiClient;
+
+  constructor(client: GeminiApiClient) {
+    this.client = client;
+  }
 
   async getAccounts(): Promise<ProviderAccount[]> {
     const models = await this.client.getModels();
@@ -16,10 +20,14 @@ export class GeminiApiProvider implements Provider {
         id: "gemini-api-default",
         providerId: this.id,
         displayName: "Gemini API",
-        capabilities: ["account", "usage", "quota"],
-        metadata: {
-          modelCount: models.length,
-        },
+        capabilities: [
+          { id: "account", availability: "available" },
+          { id: "usage", availability: "available" },
+          { id: "quota", availability: "available" },
+          { id: "plan", availability: "available" },
+          { id: "reset-time", availability: "available" },
+        ],
+        plan: `${models.length} models available`,
       },
     ];
   }
@@ -29,14 +37,7 @@ export class GeminiApiProvider implements Provider {
 
     return {
       account,
-
-      connection: {
-        status: "connected",
-        message: "Gemini API authentication successful.",
-      },
-
       quotas: [],
-
       retrievedAt: new Date().toISOString(),
     };
   }

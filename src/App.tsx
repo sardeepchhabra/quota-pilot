@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ProviderAccount } from "./providers/provider";
 import type { ProviderSnapshot } from "./domain/quota";
 import { ProviderService } from "./services/provider-service";
 import { createProviderRegistry } from "./providers";
 import "./App.css";
-// import { ManualSubscriptionForm } from "./components/ManualSubscriptionForm";
 import { SubscriptionService } from "./services/subscription-service";
-// import { PROVIDER_CATALOG } from "./providers/provider-catalog";
 import type { Subscription } from "./domain/subscription";
 import { getCodexSnapshot, type CodexSnapshot } from "./services/codex-service";
+import { SnapshotService } from "./services/snapshot-service";
 
 const providerService = new ProviderService(createProviderRegistry());
 const subscriptionService = new SubscriptionService();
+const snapshotService = new SnapshotService();
+
 function capabilityLabel(snapshot: ProviderSnapshot, id: string) {
   return snapshot.account.capabilities.find(
     (capability) => capability.id === id,
@@ -19,48 +20,93 @@ function capabilityLabel(snapshot: ProviderSnapshot, id: string) {
 }
 
 function App() {
-  const [snapshots, setSnapshots] = useState<ProviderSnapshot[]>([]);
+  const [snapshots, setSnapshots] = useState<ProviderSnapshot[]>(() =>
+    snapshotService.loadProviderSnapshots(),
+  );
   const [loading, setLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() =>
+  const [subscriptions] = useState<Subscription[]>(() =>
     subscriptionService.getAll(),
   );
-
-  // const [showChatGPTSetup, setShowChatGPTSetup] = useState(false);
-  const [codex, setCodex] = useState<CodexSnapshot | null>(null);
+  const [showChatGPTSetup, setShowChatGPTSetup] = useState(false);
+  const [codex, setCodex] = useState<CodexSnapshot | null>(() =>
+    snapshotService.loadCodexSnapshot(),
+  );
   const [codexError, setCodexError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getCodexSnapshot()
-      .then(setCodex)
-      .catch((error) => {
-        setCodexError(error instanceof Error ? error.message : String(error));
-      });
-  }, []);
-  // const saveSubscription = (subscription: Subscription) => {
-  //   subscriptionService.save(subscription);
+  const connectedAccounts = useMemo(
+    () => snapshots.length + (codex ? 1 : 0),
+    [codex, snapshots.length],
+  );
 
-  //   setSubscriptions(subscriptionService.getAll());
-  //   setShowChatGPTSetup(false);
-  // };
-  const loadProviders = async () => {
+  const availableQuotaCount = useMemo(() => {
+    const providerQuotaCount = snapshots.filter((snapshot) =>
+      snapshot.quotas.some(
+        (quota) =>
+          quota.percentageRemaining !== undefined || quota.remaining !== undefined,
+      ),
+    ).length;
+
+    const codexQuotaCount = codex && codex.remaining_percent != null ? 1 : 0;
+
+    return providerQuotaCount + codexQuotaCount;
+  }, [codex, snapshots]);
+
+  const refreshProviders = async () => {
+    const accounts: ProviderAccount[] = await providerService.getAccounts();
+
+    const results = await Promise.all(
+      accounts.map((account) => providerService.getSnapshot(account)),
+    );
+
+    setSnapshots(results);
+    snapshotService.saveProviderSnapshots(results);
+
+    return results;
+  };
+
+  const refreshCodex = async () => {
+    const nextSnapshot = await getCodexSnapshot();
+
+    setCodex(nextSnapshot);
+    setCodexError(null);
+    snapshotService.saveCodexSnapshot(nextSnapshot);
+
+    return nextSnapshot;
+  };
+
+  const refreshAll = async () => {
     setLoading(true);
 
     try {
-      const accounts: ProviderAccount[] = await providerService.getAccounts();
-
-      const results = await Promise.all(
-        accounts.map((account) => providerService.getSnapshot(account)),
+      await refreshProviders();
+    } catch (error) {
+      setCodexError(
+        error instanceof Error ? error.message : "Unable to refresh providers.",
       );
+    }
 
-      setSnapshots(results);
+    try {
+      await refreshCodex();
+    } catch (error) {
+      setCodexError(
+        error instanceof Error ? error.message : "Unable to refresh Codex.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // useEffect(() => {
-  //   void loadProviders();
-  // }, []);
+  useEffect(() => {
+    void refreshAll();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void refreshAll();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   return (
     <main className="app">
@@ -70,7 +116,7 @@ function App() {
           <p>Know your AI headroom.</p>
         </div>
 
-        <button className="refresh-button" onClick={() => void loadProviders()}>
+        <button className="refresh-button" onClick={() => void refreshAll()}>
           Refresh
         </button>
       </header>
@@ -78,12 +124,12 @@ function App() {
       <section className="summary">
         <div>
           <span className="label">Connected accounts</span>
-          <strong>{snapshots.length}</strong>
+          <strong>{connectedAccounts}</strong>
         </div>
 
         <div>
           <span className="label">Available quotas</span>
-          <strong>{snapshots.filter((s) => s.quotas.length > 0).length}</strong>
+          <strong>{availableQuotaCount}</strong>
         </div>
 
         <div>
@@ -95,14 +141,13 @@ function App() {
       <section className="providers">
         <div className="section-header">
           <h2>AI Accounts</h2>
-          <span>{snapshots.length} connected</span>
+          <span>{connectedAccounts} connected</span>
         </div>
 
         <div className="provider-grid">
           {snapshots.map((snapshot) => {
             const quota = snapshot.quotas[0];
             const subscription = snapshot.subscription;
-
             const usageCapability = capabilityLabel(snapshot, "usage");
 
             return (
@@ -119,9 +164,7 @@ function App() {
                 <div className="plan">
                   <span className="label">Plan</span>
                   <strong>
-                    {subscription?.planName ??
-                      snapshot.account.plan ??
-                      "Unknown"}
+                    {subscription?.planName ?? snapshot.account.plan ?? "Unknown"}
                   </strong>
                 </div>
 
@@ -151,8 +194,7 @@ function App() {
 
                 {subscription?.renewsAt && (
                   <p className="reset">
-                    Renews:{" "}
-                    {new Date(subscription.renewsAt).toLocaleDateString()}
+                    Renews: {new Date(subscription.renewsAt).toLocaleDateString()}
                   </p>
                 )}
 
@@ -171,6 +213,7 @@ function App() {
           })}
         </div>
       </section>
+
       <section className="subscriptions">
         <div className="section-header">
           <h2>Subscriptions</h2>
@@ -267,13 +310,16 @@ function App() {
           </span>
         </article>
       )}
-      {/* {showChatGPTSetup && (
-        <ManualSubscriptionForm
-          providerId="chatgpt"
-          onSave={saveSubscription}
-          onCancel={() => setShowChatGPTSetup(false)}
-        />
-      )} */}
+
+      {showChatGPTSetup && (
+        <div className="provider-card">
+          <h3>Subscription prompt</h3>
+          <p>Manual ChatGPT tracking is available in the subscription ledger.</p>
+          <button className="primary-button" onClick={() => setShowChatGPTSetup(false)}>
+            Close
+          </button>
+        </div>
+      )}
     </main>
   );
 }

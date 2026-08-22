@@ -32,7 +32,20 @@ To support robust data parsing, the application separates metadata and snapshot 
 
 ---
 
-## 3. Credential Security & OS Storage Split
+## 3. Runtime Snapshot Persistence
+
+For live providers, QuotaPilot keeps the most recently fetched usage snapshot available immediately after app startup or refresh so the dashboard remains usable even when a provider is briefly unavailable. These values are stored locally in a small JSON blob under the browser/local app storage, with the same privacy rule as other state: no raw API keys, bearer tokens, or cookie values are persisted.
+
+```text
+quotapilot.snapshot-state
+└── { providerSnapshots, codexSnapshot, updatedAt }
+```
+
+This enables rapid rehydration of the summary state while still preserving the source-of-truth pattern where normal configuration remains separate from secure credential storage.
+
+---
+
+## 4. Credential Security & OS Storage Split
 
 Under no circumstances should API keys, session cookies, or raw bearer tokens be placed in plaintext configuration JSON files.
 
@@ -63,7 +76,7 @@ Under no circumstances should API keys, session cookies, or raw bearer tokens be
 
 ---
 
-## 4. Local Data Integrity & Correctness Rules
+## 5. Local Data Integrity & Correctness Rules
 
 To guarantee robustness and avoid data corruption, QuotaPilot enforces three strict design principles:
 

@@ -6,6 +6,16 @@ const mockAccount: ProviderAccount = {
   providerId: "mock",
   displayName: "Demo Account",
   plan: "Demo",
+  capabilities: [
+    { id: "account", availability: "available" },
+    { id: "plan", availability: "available" },
+    { id: "subscription", availability: "available" },
+    { id: "usage", availability: "available" },
+    { id: "quota", availability: "available" },
+    { id: "reset-time", availability: "available" },
+    { id: "credits", availability: "not-supported" },
+    { id: "billing", availability: "not-supported" },
+  ],
 };
 
 export class MockProvider implements Provider {

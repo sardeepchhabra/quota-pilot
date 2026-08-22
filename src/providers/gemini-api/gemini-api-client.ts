@@ -5,8 +5,11 @@ export interface GeminiModel {
 
 export class GeminiApiClient {
   private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+  private readonly apiKey: string;
 
-  constructor(private readonly apiKey: string) {}
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
 
   private async request<T>(path: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
